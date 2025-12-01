@@ -1,0 +1,91 @@
+#!/bin/bash
+
+OUTDIR_PREFIX="./data/"
+NUM_TOPS=100
+ALPHA=6 #fixed as in paper prediction based sincronia
+
+LOAD_FACTOR=0.5
+INTRA_COFLOW_CONTENTION=0.5
+
+NUM_SAMPLES=1
+
+# Release date distribution generation
+releasedTimeLaw="G"  # "PS": for Poisson, "P": for Pareto "G":Geometric law
+
+# Parameters
+LAMBDA_P=(0 5 50)  # For Poisson
+
+ALPHA_PARETO=(5 50) # For Pareto
+
+P_=(0.15) #  For Geometric Law
+
+NUM_COFLOWS_LIST=(50 100) # List of Number of Coflow 
+NUM_PORTS_LIST=(10 20) # Number of input or output 
+
+
+
+if [ "$releasedTimeLaw" = "PS" ]; then
+    for ((lam=0; lam<${#LAMBDA_P[@]}; lam++)); do
+        OUTDIR_="${OUTDIR_PREFIX}${LAMBDA_P[$lam]}/"
+
+        for ((i=0; i<${#NUM_PORTS_LIST[@]}; i++)); do
+            NUM_PORTS=${NUM_PORTS_LIST[$i]}
+            NUM_PORTS_t=$((2 * NUM_PORTS))
+
+            for NUM_COFLOWS in "${NUM_COFLOWS_LIST[@]}"; do
+                for TOP in $(seq 1 ${NUM_TOPS}); do
+                        printf -v TOP_ID "%04d" ${TOP}
+                        echo "TOP_ID is $TOP_ID, N $NUM_COFLOWS L $NUM_PORTS_t LAMBDA_P ${LAMBDA_P[$lam]}"
+                        OUTDIR="${OUTDIR_}N${NUM_COFLOWS}_L${NUM_PORTS_t}"
+                        
+                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} ${NUM_SAMPLES} ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${LAMBDA_P[$lam]}
+
+                done
+            done
+        done
+    done
+
+elif [ "$releasedTimeLaw" = "P" ]; then
+    for ((lam=0; lam<${#ALPHA_PARETO[@]}; lam++)); do
+        OUTDIR_="${OUTDIR_PREFIX}${ALPHA_PARETO[$lam]}/"
+
+        for ((i=0; i<${#NUM_PORTS_LIST[@]}; i++)); do
+            NUM_PORTS=${NUM_PORTS_LIST[$i]}
+            NUM_PORTS_t=$((2 * NUM_PORTS))
+
+            for NUM_COFLOWS in "${NUM_COFLOWS_LIST[@]}"; do
+                for TOP in $(seq 1 ${NUM_TOPS}); do
+                        printf -v TOP_ID "%04d" ${TOP}
+                        echo "TOP_ID is $TOP_ID, N $NUM_COFLOWS L $NUM_PORTS_t ALPHA_PARETO ${ALPHA_PARETO[$lam]}"
+                        OUTDIR="${OUTDIR_}N${NUM_COFLOWS}_L${NUM_PORTS_t}"
+                        
+                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} ${NUM_SAMPLES} ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${ALPHA_PARETO[$lam]}
+
+                done
+            done
+        done
+    done
+elif [ "$releasedTimeLaw" = "G" ]; then
+    for ((lam=0; lam<${#P_[@]}; lam++)); do
+        OUTDIR_="${OUTDIR_PREFIX}${P_[$lam]}/"
+
+        for ((i=0; i<${#NUM_PORTS_LIST[@]}; i++)); do
+            NUM_PORTS=${NUM_PORTS_LIST[$i]}
+            NUM_PORTS_t=$((2 * NUM_PORTS))
+
+            for NUM_COFLOWS in "${NUM_COFLOWS_LIST[@]}"; do
+                for TOP in $(seq 1 ${NUM_TOPS}); do
+                        printf -v TOP_ID "%04d" ${TOP}
+                        echo "TOP_ID is $TOP_ID, N $NUM_COFLOWS L $NUM_PORTS_t Geometric Law ${P_[$lam]}"
+                        OUTDIR="${OUTDIR_}N${NUM_COFLOWS}_L${NUM_PORTS_t}"
+                        
+                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} ${NUM_SAMPLES} ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${P_[$lam]}
+
+                done
+            done
+        done
+    done
+else
+    echo "Error: Invalid releasedTimeLaw. Use 'PS' (Poisson) or 'P' (Pareto)."
+    exit 1
+fi
