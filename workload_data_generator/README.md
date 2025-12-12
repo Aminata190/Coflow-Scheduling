@@ -1,6 +1,6 @@
  # Coflow workload generator
 
-A command-line tool for generating synthetic Coflow workloads, supporting multiple distributions, topologies, and contention models.
+A command-line tool for generating Coflow workloads from Facebook traces, supporting multiple distributions, topologies, and contention models.
 
  Command Line Argument           | Input Value Range  
 :-------------:| :-----:

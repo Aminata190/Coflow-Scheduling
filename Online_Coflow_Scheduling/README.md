@@ -55,7 +55,7 @@ Adjust the flags and indices according to the instances and policies you wish to
 ## 4. Notes
 
 - Make sure the `BIN` directory is writable.
-- To clean intermediate and log files, use the `clean` target from the provided Makefile (if defined there).
+- To clean intermediate and log files, use the `clean` target from the provided Makefile.
 
 
 
