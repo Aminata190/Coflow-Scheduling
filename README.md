@@ -21,22 +21,27 @@ This repository implements a **robust coflow scheduling framework** that:
 Coflow-Scheduling/
 │
 ├── Online_Coflow_Scheduling/        # Core scheduling algorithms and simulator
-│   ├── ...                          # Simulation helper functions (Network functions, simulations methods, ...)
-│   ├── exec                         # Simulation execution main file
-│   ├── config                       # Simulation configuration
-│   ├── BIN/                         # Executable files
-│   ├── Inputs/                      # Files from workload generator
-│   ├── Outputs/                     # Output files from simulations
+│   ├── ...                          # Network utilities, simulation logic, helper classes
+│   ├── exec                         # Main executable files for running simulations
+│   ├── BIN/                         # Compiled executables
+│   ├── Inputs/                      # Workload generator output (coflows, flows, parameters)
+│   ├── Outputs/                     # Simulation results (logs, completion times, metrics)
+│   ├── Simulation_Configurations.txt # Simulation configuration
 │   └── README.md
 │
-├── workload_data_generator/         # Facebook traces and workload generation
+├── workload_data_generator/         # Facebook trace processing + workload generation
 │   ├── ...                          # Workload generator functions
-│   ├── instances_generator          # Generator parameters
+│   ├── instances_generator          # Parameter script for workload creation
 │   ├── README.md
 │
-├── Analysis/                        # Jupyter notebook + plotting scripts
+├── Analysis/                        # Jupyter notebook and plotting scripts
+│   ├── Data/                        # Simulation output files used for analysis
+│   ├── Functions.py                 # Utility functions for visualization & metrics
+│   └── Analysis.ipynb               # Plots and comparative metrics (clairvoyant vs prediction-based)
 │
-└── README.md
+├── requirements.txt                 #Python dependencies for analysis
+│
+└── README.md                        # Main project documentation
 ```
 
 
@@ -47,7 +52,7 @@ Coflow-Scheduling/
 ```bibtex
 @misc{coflow2025,
   title        = {Online Coflow Scheduling with Predictions},
-  author       = {Aminata Sangho and Olivier Brun and Balakrishna Prabhu},
+  author       = {Aminata Sangho and Olivier Brun and Balakrishna J. Prabhu},
   year         = {2025},
   howpublished = {\url{https://github.com/Aminata190/Coflow-Scheduling}}
 }
