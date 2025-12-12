@@ -1,0 +1,31 @@
+The simulations are conducted on various configurations defined by:
+
+    - the number of coflows (either all released at once or arriving over time),
+
+    - and the number of ports in the core fabric.
+
+For each configuration, 100 instances are generated using the workload generator.
+
+
+I. Clairvoyant-based Experiments
+
+    1. We run both offline and online simulations.
+
+    2. Scheduling is performed using:
+
+        - Exact methods (Gurobi), or
+
+        - Approximate solvers (CLP).
+
+II. Prediction-based Experiments
+
+    1. For each coflow instance, we generate predicted flow sizes with 10 different error levels, from {0.0, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99}.
+
+    2. For each error level, we create 1,000 predictions per flow using a normal distribution centered at the prediction error.  
+
+
+Finally, we compare performance using the ratio between prediction-based and clairvoyant completion times.  
+
+```
+./../Analysis/
+```

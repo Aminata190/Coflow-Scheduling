@@ -1,13 +1,12 @@
 #!/bin/bash
 
-OUTDIR_PREFIX="./data/"
+OUTDIR_PREFIX="./../Online_Coflow_Scheduling/Inputs/"
 NUM_TOPS=100
 ALPHA=6 #fixed as in paper prediction based sincronia
 
 LOAD_FACTOR=0.5
 INTRA_COFLOW_CONTENTION=0.5
 
-NUM_SAMPLES=1
 
 # Release date distribution generation
 releasedTimeLaw="G"  # "PS": for Poisson, "P": for Pareto "G":Geometric law
@@ -17,10 +16,10 @@ LAMBDA_P=(0 5 50)  # For Poisson
 
 ALPHA_PARETO=(5 50) # For Pareto
 
-P_=(0.15) #  For Geometric Law
+P_=(0.25) #  For Geometric Law
 
 NUM_COFLOWS_LIST=(50 100) # List of Number of Coflow 
-NUM_PORTS_LIST=(10 20) # Number of input or output 
+NUM_PORTS_LIST=(10 20) # Number of input or output => L/2
 
 
 
@@ -38,7 +37,7 @@ if [ "$releasedTimeLaw" = "PS" ]; then
                         echo "TOP_ID is $TOP_ID, N $NUM_COFLOWS L $NUM_PORTS_t LAMBDA_P ${LAMBDA_P[$lam]}"
                         OUTDIR="${OUTDIR_}N${NUM_COFLOWS}_L${NUM_PORTS_t}"
                         
-                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} ${NUM_SAMPLES} ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${LAMBDA_P[$lam]}
+                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} 1 ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${LAMBDA_P[$lam]}
 
                 done
             done
@@ -59,7 +58,7 @@ elif [ "$releasedTimeLaw" = "P" ]; then
                         echo "TOP_ID is $TOP_ID, N $NUM_COFLOWS L $NUM_PORTS_t ALPHA_PARETO ${ALPHA_PARETO[$lam]}"
                         OUTDIR="${OUTDIR_}N${NUM_COFLOWS}_L${NUM_PORTS_t}"
                         
-                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} ${NUM_SAMPLES} ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${ALPHA_PARETO[$lam]}
+                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} 1 ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${ALPHA_PARETO[$lam]}
 
                 done
             done
@@ -79,7 +78,7 @@ elif [ "$releasedTimeLaw" = "G" ]; then
                         echo "TOP_ID is $TOP_ID, N $NUM_COFLOWS L $NUM_PORTS_t Geometric Law ${P_[$lam]}"
                         OUTDIR="${OUTDIR_}N${NUM_COFLOWS}_L${NUM_PORTS_t}"
                         
-                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} ${NUM_SAMPLES} ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${P_[$lam]}
+                        python3 trace_producer_multi_custom.py ${NUM_COFLOWS} ${ALPHA} ${LOAD_FACTOR} ${INTRA_COFLOW_CONTENTION} FB N ${TOP_ID} 1 ${OUTDIR} ${NUM_PORTS} ${releasedTimeLaw} ${P_[$lam]}
 
                 done
             done

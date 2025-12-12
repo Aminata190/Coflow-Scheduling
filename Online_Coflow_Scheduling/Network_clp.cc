@@ -3425,6 +3425,7 @@ list<int> Network::MUWPSolve_CLP(int alpha, double mu_max, int D, bool RealFlowS
     vector<double> rowLower(numRows, -1e20);
 
     int prod = ceil(mu_max *D); // integer of mu_max* D
+    // cerr <<"Prod mu_max * D= " << prod << endl;
     vector<double> rowUpper(numRows, prod); // sum p_i,j <= mu_max* D
 
     ClpSimplex model;
@@ -3515,11 +3516,16 @@ void Network::set_flows_pred(double stdev) {
 }
 
 // From predictions code 
-void Network::set_flows_pred_true(double delta) {
+void Network::set_flows_pred_true(double delta,int s) {
   double predFlowVolume, size, noise;
 
-  random_device rd;
-  mt19937 gen(rd());
+  // random_device rd;
+  // mt19937 gen(rd()); //random seed
+
+
+  // unsigned int seed = 42;                // fix seed
+  mt19937 gen(s); 
+  
   //  normal_distribution<double> error_dist(mean_noise, stddev_noise);
   uniform_real_distribution<double> unif(1.0-delta,1.0+delta);
   double                            u;
@@ -3535,8 +3541,10 @@ void Network::set_flows_pred_true(double delta) {
       //uniform_real_distribution<> dis(i+1, i+100); 
        // predFlowVolume= dis(gen); 
       coflow_[k].setFlowPredSize(j,predFlowVolume);
+      debug_ = true;
       if ( debug_ )
-	cerr << "V[" << coflow_[k].getId() << "," << coflow_[k].getFlowId(j) << "]=" << predFlowVolume << endl;
+        cerr << "V[" << coflow_[k].getId() << "," << coflow_[k].getFlowId(j) << "]=" << predFlowVolume << endl;
+      debug_ = false;
     }
   }
 }

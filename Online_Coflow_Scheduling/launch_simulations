@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# -------------------Geometric Arrival time Coflow distributions -p=0.25
+
+
+echo "Starting Prediction "
+ 
+./BIN/exec_clp  -o -c n -a 0 -b 100 . /Inputs/0.25/N50_L20/ . /Outputs/0.25/N50_L20/Pred/
+
+# Anticipate simulation- work conservation
+./BIN/exec_clp  -o -u -c n -a 0 -b 100 . /Inputs/0.25/N50_L20/ . /Outputs/0.25/N50_L20/Pred/
+
+
+echo "Starting Clairvoyant "
+
+./BIN/exec_clp  -c c -a 0 -b 100 . /Inputs/0.25/N50_L20/ . /Outputs/0.25/N50_L20/CL/
+
+
+
+echo "Starting Online Clairvoyant "
+./BIN/exec_clp  -o -c c -a 0 -b 100 . /Inputs/0.25/N50_L20/ . /Outputs/0.25/N50_L20/OCL/
+
+# Anticipate simulation- work conservation
+./BIN/exec_clp  -o -u -c c -a 0 -b 100 . /Inputs/0.25/N50_L20/ . /Outputs/0.25/N50_L20/OCL/
+
+
+echo "All Done!"
