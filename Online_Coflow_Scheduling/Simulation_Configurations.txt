@@ -6,7 +6,6 @@ The simulations are conducted on various configurations defined by:
 
 For each configuration, 100 instances are generated using the workload generator.
 
-
 I. Clairvoyant-based Experiments
 
     1. We run both offline and online simulations.
@@ -25,7 +24,5 @@ II. Prediction-based Experiments
 
 
 Finally, we compare performance using the ratio between prediction-based and clairvoyant completion times.  
+Analyses are provided in  ./../Analysis/
 
-```
-./../Analysis/
-```
