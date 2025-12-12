@@ -34,9 +34,7 @@ Coflow-Scheduling/
 │   ├── instances_generator          # Generator parameters
 │   ├── README.md
 │
-├── Analysis/                        # Jupyter notebooks + plotting scripts
-│
-├── results/                         # Some experiment results 
+├── Analysis/                        # Jupyter notebook + plotting scripts
 │
 └── README.md
 ```
