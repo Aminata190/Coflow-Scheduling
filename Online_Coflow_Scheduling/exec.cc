@@ -89,7 +89,9 @@ vector<double> *FREQ_fig;
 vector<long double> *time_sched_fig;
 vector<long double> *total_time_fig;
 
-int                NB_predictions = 100 ;
+int                NB_predictions = 3; //1000 ;
+
+bool               sp_anticipate = false; // compute de update SP that deals with workconservation 
 
 //****************************************************************//
 //*                                                              *//
@@ -165,7 +167,11 @@ void run_algorithm(Simulator & net, Network::Algorithm & algo,
   else {
     // cerr << ">>> MODE ONLINE: Execution <<<" << endl;  
       // net.online_simulation(algo, online, slot_size, RealFlowSizes);
-      net.online_simulation_greedy(algo, slot_size, RealFlowSizes);
+      if (sp_anticipate)
+        net.online_simulation_greedy_anticipate(algo, slot_size, RealFlowSizes);
+      else 
+        net.online_simulation_greedy(algo, slot_size, RealFlowSizes);
+
   } 
   c_end2 = clock();
   
@@ -261,7 +267,12 @@ void process_file(const char * fileName, const char * outputDirName, int index) 
   bool               RealFlowSizes = false;
   list<int>          pred_order;
   
-  array<double,10>   pred_error = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.99}; //10 values of delta
+  // array<double,12>   pred_error = {0.0, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99}; //old values of delta
+  // array<double,10>   pred_error = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.99}; //10 values of delta
+  
+  // array<double,1>   pred_error = {0.99}; //1 value of delta
+  array<double,5>   pred_error = {0.0, 0.3, 0.5, 0.7, 0.99};
+  // array<double,3>   geometric_pred_param = {0.25, 0.5, 0.75};
   Stats              stats_cct_pred, stats_cct_r;
    
   //execution de Gurobi
@@ -273,11 +284,7 @@ void process_file(const char * fileName, const char * outputDirName, int index) 
     cerr << "\t\t\t=> ***gurobi cct : " << cct_lp << endl;
   }
   else{
-    if (LB.empty()) {
-          cerr << "---Error: LB is empty! Cannot access LB[0]." << endl <<"---Initialization to 0.0" << endl;
-          LB.push_back(0.0);
-      }
-    cct_lp = LB[0]; }
+    cct_lp = -1; }
 
   // execution de Sincronia clairvoyant
   if ((choix == CL) || (choix == ALL)) {
@@ -309,10 +316,10 @@ void process_file(const char * fileName, const char * outputDirName, int index) 
 
   
 
-   // ############### Execution of Sincronia with predicted values ####################
+   // ############### Execution de Sincronia avec les valeurs predites ####################
   
   if ((choix == NC) || (choix == ALL)) { 
-      cerr << "Execution of Sincronia with predicted values..." << endl;
+      cerr << "Execution de Sincronia avec les valeurs predites..." << endl;
       RealFlowSizes = false;
       algo = Network::SINCRONIA;
       net.setLambda(1.0);
@@ -334,13 +341,13 @@ void process_file(const char * fileName, const char * outputDirName, int index) 
             {  
               net.reset();
               set_to_zero(cost, cct_pred, cct_pred_norm);
-              net.set_flows_pred_true(delta) ;
+              net.set_flows_pred_true(delta,i) ;
               net.setMu_max(1+delta);
               // cerr << "-----------------------Start -------------------------" << endl;
               
               run_algorithm(net, algo, cost, cct_pred, cct_pred_norm, mu_min, mu_max, time_elapsed_ms, total_time_ms, RealFlowSizes);
               // cerr << "cct_pred : " << cct_pred << endl;
-              // cerr << "\t\t\t=> average cct pred=" << cct_pred  << endl;
+              cerr << "\t\t\t=> average cct pred=" << cct_pred  << endl;
 
               stats_cct_pred.push_back(cct_pred);
               
@@ -409,7 +416,7 @@ void process_file(const char * fileName, const char * outputDirName, int index) 
               cerr << "test "<< endl; 
               net.reset();
               set_to_zero(cost, cct_pred, cct_pred_norm);
-              net.set_flows_pred_true(delta) ;
+              net.set_flows_pred_true(delta,i) ;
               net.setMu_max(1+delta);
               // cerr << "-----------------------Start -------------------------" << endl;
               
@@ -447,6 +454,13 @@ void process_file(const char * fileName, const char * outputDirName, int index) 
   
   //stockage des resultats
   store_results(index, cct_lp, cct_sin,cct_sin_t, cct_r, cct_ro, cct_pred, time_elapsed_ms, total_time_ms, list_int_to_string(pred_order));
+
+  // ****************Get the average p_lk***************
+  // int N = net.getNbCoflows();
+  // int L = net.getNbFlows();
+  // float avg = net.average_proc_time();
+  // write_average_proc_time(N,L,avg, outputDirName);
+  // cerr <<"\t\tAverage p_lk=" << avg << endl;
 
 }
 
@@ -540,14 +554,17 @@ void write_output_file(const char * outputDirName) {
   //ouverture du fichier de sortie
   if (OFILE_FLAG) {
 	outputFileName = string(outputDirName) + "/" + ofname;
-	orderFileName = string(outputDirName) + "/order-" + ofname;
+	// orderFileName = string(outputDirName) + "/order-" + ofname;
   }
   else {
-	outputFileName = string(outputDirName) + "/results-"+startStr+"-"+endStr+".txt";
-	orderFileName = string(outputDirName) + "/order-"+startStr+"-"+endStr+".txt";
+    if (sp_anticipate)
+      outputFileName = string(outputDirName) + "/SpUpdate_results-"+startStr+"-"+endStr+".txt";
+	  else
+      outputFileName = string(outputDirName) + "/results-"+startStr+"-"+endStr+".txt";
+	// orderFileName = string(outputDirName) + "/order-"+startStr+"-"+endStr+".txt";
   }
   ofstream    outFile(outputFileName.c_str());
-  ofstream    orderFile(orderFileName.c_str());  
+  // ofstream    orderFile(orderFileName.c_str());  
     
   cerr << "Writing output file " << outputFileName << endl;
   cerr << "Format : # INST"
@@ -594,22 +611,7 @@ void write_output_file(const char * outputDirName) {
   }
   outFile.close();
 
-  cerr << "Writing Sincronia order in file " << orderFileName << endl;
-  cerr << "Format : # INST"
-       << "\t"
-       << "ORDER"
-       << endl;
-
-  //ecriture des resultats
-  for (i=0; i<INST.size(); i++) {
-    orderFile << fixed
-	      << setprecision(3)
-	      << INST[i]
-	      << "\t"
-	      << ORDER[i]
-	      << endl;
-  }
-  orderFile.close();
+  
 }
 
 
@@ -619,6 +621,8 @@ void write_output_file_fig(const char * outputDirName) {
   double      f;
   string      freq;
   string      predStr=int_to_string(NB_predictions);
+  string      startStr=int_to_string(start_file);
+  string      endStr=int_to_string(end_file);
   string      metricName;
   
   if ( slot_size > 0.0 ) {
@@ -630,82 +634,63 @@ void write_output_file_fig(const char * outputDirName) {
     freq = "inf";
   }
   
+  metricName="cct_pred";
+  string outputFileName ;
+  if (sp_anticipate)
+    outputFileName = string(outputDirName) + "/A_results-"+startStr+"-"+endStr+"_"+ metricName + "_n=" + predStr + ".txt";
+  else 
+    outputFileName = string(outputDirName) + "/results-"+startStr+"-"+endStr+"_"+ metricName + "_n=" + predStr + ".txt";
+  ofstream    outFile(outputFileName.c_str());
   
-  //ecriture des resultats de chaque metrique
-  for (n=0; n<4; n++) {
-    
-    switch( n )
-      {
-      case 0 :
-	metricName="cct_pred";
-	break;
+  cerr << "Writing output file " << outputFileName << endl;
+  cerr << "Format : # INST"
+  << "\t"
+  << "DELTA"
+  << "\t"
+  << "MEAN"
+  << "\t"
+  << "MIN"
+  << "\t"
+  << "MAX"
+  << "\t"
+  << "MEDIAN"
+  << "\t"
+  << "STDDEV"
+  << "\t"
+  << "FREQ"
+  << "\t"
+  << "time sched_ms"
+  << "\t"
+  << "total_time_ms"
+  << endl;
 
-      case 1 :
-	metricName="cct_sin";
-	break;
-
-      case 2 :
-	metricName="mu";
-	break;
-	
-      default :
-	cerr << "Unknown metric " << endl;
-	exit(-1);
-      }
-
-    //ouverture du fichier de sortie
-    string      outputFileName = string(outputDirName) + "/" + metricName + "_n=" + predStr + ".txt";
-    ofstream    outFile(outputFileName.c_str());
-    
-    cerr << "Writing output file " << outputFileName << endl;
-    cerr << "Format : # INST"
-	 << "\t"
-	 << "DELTA"
-	 << "\t"
-	 << "MEAN"
-	 << "\t"
-	 << "MIN"
-	 << "\t"
-	 << "MAX"
-	 << "\t"
-	 << "MEDIAN"
-	 << "\t"
-	 << "STDDEV"
-	 << "\t"
-	 << "FREQ"
-	 << "\t"
-	 << "time sched_ms"
-	 << "\t"
-	 << "total_time_ms"
-	 << endl;
-
-    //ecriture des resultats
-    for (i=0; i<MEAN_fig[n].size(); i++) {
-      outFile << fixed
-	      << setprecision(3)
-	      << INST_fig[n][i]
-	      << "\t"
-	      << DELTA_fig[n][i]
-	      << "\t"
-	      << MEAN_fig[n][i]
-	      << "\t"
-	      << MIN_fig[n][i]
-	      << "\t"
-	      << MAX_fig[n][i]
-	      << "\t"
-	      << MEDIAN_fig[n][i]
-	      << "\t"
-	      << STDDEV_fig[n][i]
-	      << "\t"
-	      << FREQ_fig[n][i]
-	      << "\t"
-	      << time_sched_fig[n][i]
-	      << "\t"
-	      << total_time_fig[n][i]
-	      << endl;
-    }
-    outFile.close();
+  //ecriture des resultats
+  for (i=0; i<MEAN_fig[n].size(); i++) {
+    outFile << fixed
+      << setprecision(3)
+      << INST_fig[n][i]
+      << "\t"
+      << DELTA_fig[n][i]
+      << "\t"
+      << MEAN_fig[n][i]
+      << "\t"
+      << MIN_fig[n][i]
+      << "\t"
+      << MAX_fig[n][i]
+      << "\t"
+      << MEDIAN_fig[n][i]
+      << "\t"
+      << STDDEV_fig[n][i]
+      << "\t"
+      << FREQ_fig[n][i]
+      << "\t"
+      << time_sched_fig[n][i]
+      << "\t"
+      << total_time_fig[n][i]
+      << endl;
   }
+  outFile.close();
+
 }
 
 
@@ -724,14 +709,14 @@ int main(int argc, char **argv)
 
   //lecture des arguments
   opterr = 0;
-  while ((c = getopt (argc, argv, "o:a:b:f:l:m:s:c:z:h:t")) != -1)
+  while ((c = getopt (argc, argv, "a:b:f:l:m:s:c:z:ohtu")) != -1)
     switch (c)
       {
       case 'o':
         online = true;
         break;
-      case 't': //added
-        online = true;
+      case 'u': // SP Anticipate
+        sp_anticipate = true;
         break;
       case 'a':
         start_file = atoi(optarg);
@@ -788,9 +773,13 @@ int main(int argc, char **argv)
         OFILE_FLAG=true;
 	ofname = optarg;	
 	break;
+      // case 'u':
+      //   sp_anticipate = true;
+      // break;
       case 'h':
-	cerr << "Usage : exec -o -a x1 -b x2 -f x2 -l x3 -m x4 -s x5 inputDirName outputDirName" << endl;
+	cerr << "Usage : exec -o -u -a x1 -b x2 -f x2 -l x3 -m x4 -s x5 inputDirName outputDirName" << endl;
 	cerr << "\tOption -o is to run the simulation in online mode" << endl;
+  cerr << "\tOption -u is to run the simulation of online mode with anticipate intervalle" << endl;
 	cerr << "\tx1 is the number of the first instance (file) to be processed" << endl;
 	cerr << "\tx2 is the number of the last instance (file) to be processed" << endl;
 	cerr << "\tx2 is the frequency f of updates in online mode" << endl;
@@ -833,7 +822,9 @@ int main(int argc, char **argv)
   //affichage
   cerr << "Stochastic coflow scheduling" << endl;
 
-  
+  // //traitement des instances
+  // process_dir(inputDirName, outputDirName);
+
   // //ecriture du fichier
   // write_output_file(outputDirName); 
   if (choix != NC){
@@ -843,6 +834,7 @@ int main(int argc, char **argv)
     write_output_file(outputDirName); 
   }else{
     //****************************Predictions**************************** */
+    //allocation memoire
     INST_fig = new vector<int>[3];
     DELTA_fig = new vector<double>[3];
     MEAN_fig = new vector<double>[3];
@@ -872,6 +864,9 @@ int main(int argc, char **argv)
     delete [] total_time_fig;
     //******************************************************** */
   }
+  
+  // write the aeverage processing time
+  // with()
   
   return 1;
 }

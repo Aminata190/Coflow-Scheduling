@@ -137,50 +137,7 @@ void Simulator::clone(Network & copy, list<int> & released, list<int> & running,
   copy.compute_time_slots();
 }
 
-// New version -not complete 
-// released is a list of coflow id
-// void Simulator::clone(Network & copy, list<int> & released, list<int> & running, double t) {
-//   int                  n, i, j, k;
-//   set<int>             set_coflow_id;
-//   map<int,int>         nb_flows;
-//   set<int>::iterator   it;
 
-//   //version de DCOFLOW
-//   copy.setVersion(version_);
-  
-//   //Coflows
-//   set_coflow_id.insert(released.begin(),released.end());
-//   set_coflow_id.insert(running.begin(),running.end());
-
-//   n = set_coflow_id.size();
-//   copy.setNumberofCoflows(n);
-//   k = 0;
-//   nb_flows[k] = 0;
-//   it = set_coflow_id.begin();
-//   for ( ; it != set_coflow_id.end(); it++, k++) {
-//     copy.addCoflow(k,coflow_[*it],t);
-//     j = coflow_[*it].getNbFlow();    
-//     for (i=0; i<j; i++) {
-//       int     id = coflow_[*it].getFlowId(i);
-
-//       if ( contains(released,id) || contains(running,id) ) {
-//         copy.addFlow(k,nb_flows[k],id,coflow_[*it].getFlow(i), true);
-//         nb_flows[k]++;
-//       }
-//     }
-//     copy.setNumberofFlows(k, nb_flows[k]);
-//   }
-  
-//   //read links
-//   // cerr << "in Clone nbLinks_ : " <<nbLinks_<< endl;
-//   copy.setNumberofLinks( nbLinks_ );
-//   for (i=0; i<nbLinks_; i++)
-//     copy.addLink(i,link_[i]);
-
-//   // Problem ????????????????deeper?????????????????????????????
-//   //compute time slots
-//   copy.compute_time_slots();
-// }
 
 
 
@@ -634,6 +591,7 @@ void Simulator::selector(double t,int alpha,double mu_max,int deadline, list<int
   pair<int,int>         x;
   int                   next_flow = 0;
   
+  // cerr <<"  Coflow Released size Before: " <<released.size() << endl;
   if ( released.empty() )
     return;
   
@@ -667,7 +625,7 @@ void Simulator::selector(double t,int alpha,double mu_max,int deadline, list<int
       selected.push_back(flowId);
     }    
   }
-  // cerr <<"  Released size: " <<released.size() << endl;
+  // cerr <<" Coflow Released size After: " <<released.size() << endl;
 }
 
 
@@ -841,7 +799,7 @@ void Simulator::run_flows(double t,int loop, list<int> & selected,list<int> & ru
 
 //----------------------------------------------------------------//
 // Public Method:     allocation                                  //
-// Simulation combinant allcotaion Greedy et RR pour online       //
+// Simulation combinant allcotaion Greedy  pour online       //
 //----------------------------------------------------------------//
 
 void Simulator::allocation(int start_epoch,int alpha,double mu_max,list<int> & selected,list<int> & flow_list) {
@@ -861,8 +819,8 @@ void Simulator::allocation(int start_epoch,int alpha,double mu_max,list<int> & s
   double                 t, global_time;
 
   //initialisation
-  
-  global_time = ceil(alpha *mu_max * start_epoch); // all are integer 
+  // all are integer 
+  global_time = ceil(alpha *mu_max * start_epoch); 
   int loop = global_time ;
 
   auto it_s = selected.begin();
@@ -888,6 +846,160 @@ void Simulator::allocation(int start_epoch,int alpha,double mu_max,list<int> & s
     p = coflow_[k].getFlowPriority(i);
     priority_map[p].push_back(f);
   }
+  
+  // cerr <<"\t flow_list flow list before removing" << endl;
+  //     for(auto a=flow_list.begin(); a!= flow_list.end(); a++){
+  //       cerr << "\t\t flow: " << *a << endl;
+
+  //     }
+  //boucle principale
+  while ( runningFlows.empty() == false ) {
+
+    // compute Greedy allocation
+    greedy_allocation(runningFlows, greedy_rate, busy, priorities, priority_map);
+    
+    // determine next departure time
+    t = INFTY;
+    for (auto it=runningFlows.begin(); it != runningFlows.end(); it++) {
+      f = *it;
+     
+      if ( lambda_ < 1.0e-4 )
+        rate[f] = rr_rate[f];
+      if ( lambda_ > 0.9999 )
+        rate[f] = greedy_rate[f];
+      else
+        rate[f] = lambda_*greedy_rate[f] + (1.0-lambda_)*rr_rate[f];
+
+      if ( rate[f] > 0.0 ) {
+        k = flowIdMap_[f].first;
+        i = flowIdMap_[f].second; 
+        p = coflow_[k].getFlowPriority(i);
+        	// cerr << "Rate for flow " << i << " of coflow " << k << " (id=" << f << ", size=" << coflow_[k].getFlowSize(i) << ")" << " = " << rate[f] << endl;
+        // cerr << "flow " << f << " runs on " <<coflow_[k].getFlowSource(i) << "  and " << coflow_[k].getFlowDestination(i) << endl;
+        cct[f] = residual_size[f]/rate[f];
+        if ( cct[f] < t ) 
+          t = cct[f];
+        }
+    }
+    global_time += t;
+    loop += ceil(t);
+    
+    // determine the next flows to depart and update residual sizes for the others
+    for (auto it=runningFlows.begin(); it != runningFlows.end(); it++) {
+      f = *it;
+      k = flowIdMap_[f].first;
+      i = flowIdMap_[f].second; 
+      p = coflow_[k].getFlowPriority(i);
+      if ( fabs(cct[f]-t) < 1e-8 ) {
+	      finishedFlows.push_back(f);
+		    // cerr << "Flow " << i << " of coflow " << k << " leaves the system at time " << global_time << endl;
+      }
+      else {
+	      residual_size[f] -= rate[f]*t;
+        // cerr << "flow " << f<<" res size " <<residual_size[f] << endl;
+	// if ( rate[f] > 0.0 )
+	//   cerr << "Flow " << i << " of coflow " << k << " : residual size=" << residual_size[f] << endl;
+      }
+    }
+    // cerr <<"start " << start_epoch << endl;
+    //remove finished flows
+    
+    for (auto it=finishedFlows.begin(); it != finishedFlows.end(); it++) {
+      f = *it;
+      k = flowIdMap_[f].first;
+      i = flowIdMap_[f].second; 
+      p = coflow_[k].getFlowPriority(i);
+      // cerr << "Flow " << i << " of coflow " << k << " (id=" << f << ", size=" << coflow_[k].getFlowSize(i) << ")" << " leaves the system at time " << global_time << endl;
+      
+      runningFlows.remove(f);
+      priority_map[p].remove(f);
+      residual_size.erase(f);
+      rr_rate.erase(f);
+      greedy_rate.erase(f);
+      rate.erase(f);
+      cct.erase(f);
+      
+      coflow_[k].updateCCT(global_time);
+      // cerr <<"        Time elapse : " << loop << endl;
+      // cerr << "flow " << f<<" size=" << coflow_[k].getFlowSize(i) << endl;
+      // cerr <<"\tCCT COFLOW " << k << " is " << coflow_[k].getCCT() << " after flow " << f << " of size " <<coflow_[k].getFlowSize(i)<< " finished"<< endl << endl;
+      selected.remove(f); //remove from selected list
+      flow_list.remove(f); //remove from flow_list
+      // cerr <<"\tSelect list size after current flow removed: " << selected.size() << endl;
+      // cerr <<"\tFlow list size after current flow removed: " << flow_list.size() << endl;
+    }
+    
+    finishedFlows.clear();
+
+  } // fin while
+  // cerr <<"\t flow_list flow list after removing" << endl;
+  //     for(auto a=flow_list.begin(); a!= flow_list.end(); a++){
+  //       cerr << "\t\t flow: " << *a << endl;
+  //     }
+  delete [] busy;
+}
+
+
+//----------------------------------------------------------------//
+// Public Method:     allocation Modifier                         //
+// Simulation combinant allcotaion Greedy  pour online            //
+//Des que le dernier flow termine, passer à l'etape de decision   //
+//suivante en prenant comme point de depart suivant la fin        //
+// du dernier flux
+//----------------------------------------------------------------//
+
+void Simulator::allocation_Anticipate(int start_epoch,int alpha,double mu_max,list<int> & selected,list<int> & flow_list, int & global_time) {
+  list<int>              runningFlows;
+  list<int>              finishedFlows;
+  map<int, double>       rr_rate;
+  map<int, double>       greedy_rate;
+  map<int, double>       rate;
+  map<int,double>        residual_size;
+  map<int, double>       cct;
+  set<int>               priorities;
+  set<int>::iterator     prio_it;
+  map<int, list<int> >   priority_map;
+  list<int>::iterator    it;
+  bool                 * busy = new bool[nbLinks_];
+  int                    i, j, k, f, p;
+  double                 t;
+
+  //initialisation
+
+  // all are integer 
+  // global_time = ceil(alpha *mu_max * start_epoch); // pas utiliser dans cette approche
+  //global_time memorise le temps du dernir flux fini
+  
+  int loop = global_time ;
+
+  auto it_s = selected.begin();
+  for(; it_s != selected.end(); it_s++){
+    f = *it_s ;
+    k = flowIdMap_[f].first;
+    i= flowIdMap_[f].second;
+    coflow_[k].setCCT(0.0);
+    // f = coflow_[k].getFlowId(i);
+    p = coflow_[k].getFlowPriority(i);
+    runningFlows.push_back(f);
+    residual_size[f] = coflow_[k].getFlowSize(i);
+    priorities.insert(p);
+
+  }
+
+  for (prio_it = priorities.begin(); prio_it != priorities.end(); prio_it++)
+    priority_map[*prio_it] = list<int>();
+  for (it=runningFlows.begin(); it != runningFlows.end(); it++) {
+    f = *it;
+    k = flowIdMap_[f].first;
+    i = flowIdMap_[f].second; 
+    p = coflow_[k].getFlowPriority(i);
+    priority_map[p].push_back(f);
+  }
+
+  // cerr <<"\t flow_list flow list before removing" << endl;
+  // for(auto a=flow_list.begin(); a!= flow_list.end(); a++){
+  //   cerr << "\t\t flow: " << *a << endl;
+  // }
 
   //boucle principale
   while ( runningFlows.empty() == false ) {
@@ -940,6 +1052,7 @@ void Simulator::allocation(int start_epoch,int alpha,double mu_max,list<int> & s
     }
     // cerr <<"start " << start_epoch << endl;
     //remove finished flows
+   
     for (auto it=finishedFlows.begin(); it != finishedFlows.end(); it++) {
       f = *it;
       k = flowIdMap_[f].first;
@@ -954,19 +1067,32 @@ void Simulator::allocation(int start_epoch,int alpha,double mu_max,list<int> & s
       greedy_rate.erase(f);
       rate.erase(f);
       cct.erase(f);
+      
+      // cerr <<"\t Selected flow list after removing" << endl;
+      // for(auto a=selected.begin(); a!= selected.end(); a++){
+      //   cerr << "\t\t flow: " << *a << endl;
+      // }
+
       coflow_[k].updateCCT(global_time);
       // cerr <<"        Time elapse : " << loop << endl;
       // cerr << "flow " << f<<" size=" << coflow_[k].getFlowSize(i) << endl;
-      // cerr <<"\t\tCCT COFLOW " << k << " is " << coflow_[k].getCCT() << " after flow " << f << " of size " <<coflow_[k].getFlowSize(i)<< " finished"<< endl << endl;
+      // cerr <<"\tCCT COFLOW " << k << " is " << coflow_[k].getCCT() << " after flow " << f << " of size " <<coflow_[k].getFlowSize(i)<< " finished"<< endl << endl;
       selected.remove(f); //remove from selected list
       flow_list.remove(f); //remove from flow_list
+      // cerr <<"\tSelect list size after current flow removed: " << selected.size() << endl;
+      // cerr <<"\tFlow list size after current flow removed: " << flow_list.size() << endl;
     }
     finishedFlows.clear();
 
   } // fin while
-
+  // cerr <<"\t flow_list flow list before removing" << endl;
+  // for(auto a=flow_list.begin(); a!= flow_list.end(); a++){
+  //   cerr << "\t\t flow: " << *a << endl;
+  // }
   delete [] busy;
 }
+
+
 //----------------------------------------------------------------//
 // Public Method:  print_link_table                               //
 // Cette methode affiche les flots s'executant sur chacun des     //
@@ -1199,6 +1325,7 @@ void Simulator::online_simulation_greedy(Algorithm alg, double slot_size, bool t
   list<int>  running;
   double     t = 0.0;
   int        k,p, i, j; 
+  double     global_time = 0.0; // Initialization of compter
 
   // addArrivalTime();  // adding arrival time -from a function here  
 
@@ -1216,12 +1343,13 @@ void Simulator::online_simulation_greedy(Algorithm alg, double slot_size, bool t
   }
 
   while (!flow_list.empty()) {
-    // cerr <<"New epoch [" << epoch_start << ", " << epoch_end << " ]" << endl; 
+    // cerr <<"\n1. New epoch [" << epoch_start << ", " << epoch_end << " ]" << endl; 
     //1. Ajouter les coflows arrivés avant l'epoch start  
 
     for (k = 0; k < nbCoflows_; k++) {
       t = coflow_[k].getStartTime();        
-      if ( t>= int(epoch_start/2) && t <= epoch_start) {
+      if ( t>= int(epoch_start/2) && t <= epoch_start) { // Coflow arriving in last interval
+      // if ( t>= epoch_start && t <= epoch_start) {
         released.push_back(k);  
         // cerr <<"Coflow " << k << "released at " << t << endl;    
       }
@@ -1238,18 +1366,23 @@ void Simulator::online_simulation_greedy(Algorithm alg, double slot_size, bool t
 
       int alpha = 4;
       // if (epoch_start == 256) exit(-1);
-      // cerr << "2. Selection dans [" << mu_max*epoch_start << " , "<< mu_max*epoch_end << " ] " << endl;
-      // cerr << ". Execution dans [" << alpha *mu_max*epoch_start << " , "<< alpha *mu_max*epoch_end << " ] " << endl;
+      // cerr << "2. Selection dans [" << int(mu_max*epoch_start) << " , "<<int(mu_max*epoch_end) << " ] " << endl;
       selector(epoch_start,alpha, mu_max,deadline, released,selected,type); // epoch_start because all cofloww allready released , will be process at this time epoch
       
 
       // 3. Mettre à jour les priorités sur la selection 
+      // cerr << "3. Prioritization "<< endl;
       update_priorities(epoch_start,deadline,selected, running, alg, type); // epoch_start because all cofloww allready released , will be process at this time epoch
    
 
     // 4. Exécuter les flots selectionnés dans l'intervalle [alpha *epoch_start, alpha * epoch_end]
-    // cerr << "4. Execution dans [" << alpha *mu_max*epoch_start << " , "<< alpha *mu_max*epoch_end << " ] " << " selected flows size: " << selected.size() << endl;
+    // cerr << "4. Execution dans [" << int(alpha *mu_max*epoch_start) << " , "<< int(alpha *mu_max*epoch_end) << " ] " << " selected flows size: " << selected.size() << endl;
     
+    //------------Test an other method
+    // if (!selected.empty())
+    //   allocation(epoch_start,alpha, mu_max, selected, flow_list);
+
+
     if (!selected.empty())
       allocation(epoch_start,alpha, mu_max, selected, flow_list);
     
@@ -1260,7 +1393,89 @@ void Simulator::online_simulation_greedy(Algorithm alg, double slot_size, bool t
     // cerr <<"___________________________________________"<<endl;
    
   }
+  //  cerr <<"________________END___________________________"<<endl;
+}
 
+
+//----------------------------------------------------------------//
+// Public Method:     online_simulation with greedy               //
+//----------------------------------------------------------------//
+void Simulator::online_simulation_greedy_anticipate(Algorithm alg, double slot_size, bool type ) { // type : if real flow size
+  EventList  evtList;
+  list<int>  flow_list;
+  list<int>  released;
+  list<int>  selected;
+  list<int>  running;
+  double     t = 0.0;
+  int        k,p, i, j; 
+  int        global_time = 0; // Initialization of compter
+
+  // addArrivalTime();  // adding arrival time -from a function here  
+
+  p = 1;
+  t = 0.0;  
+
+  int epoch_start = 0;
+  int epoch_end = 1 ;
+
+  for (k=0; k<nbCoflows_; k++) { 
+    for (i = 0; i < coflow_[k].getNbFlow(); i++) {
+      int j = coflow_[k].getFlowId(i);
+      flow_list.push_back(j);
+    }
+  }
+
+  while (!flow_list.empty()) {
+    // cerr <<"\n1. New epoch [" << epoch_start << ", " << epoch_end << " ]" << endl; 
+    //1. Ajouter les coflows arrivés avant l'epoch start  
+
+    for (k = 0; k < nbCoflows_; k++) {
+      t = coflow_[k].getStartTime();        
+      if ( t>= int(epoch_start/2) && t <= epoch_start) { // Coflow arriving in last interval
+        released.push_back(k);  
+        // cerr <<"Coflow " << k << "released at " << t << endl;    
+      }
+    }
+
+    
+      // 2. Selectionner les coflows à partir de epoch_start à executer dans l'intervalle alpha*D( alpha*mu_max*D) à partir de MUWP
+      int deadline = epoch_end - epoch_start;
+      double mu_max;
+      if (!type)
+        mu_max = getMu_max();
+      else
+        mu_max = 1.0;
+
+      int alpha = 4;
+      // cerr <<"mu_max= " << mu_max << endl;
+      // if (epoch_start == 256) exit(-1);
+      // cerr << "2. Selection dans [" << int(mu_max*epoch_start) << " , "<< int(mu_max*epoch_end) << " ] " << endl;
+      selector(epoch_start,alpha, mu_max,deadline, released,selected,type); // epoch_start because all cofloww allready released , will be process at this time epoch
+      
+
+      // 3. Mettre à jour les priorités sur la selection 
+      // cerr << "3. Prioritization "<< endl;
+      update_priorities(epoch_start,deadline,selected, running, alg, type); // epoch_start because all cofloww allready released , will be process at this time epoch
+   
+
+    // 4. Exécuter les flots selectionnés dans l'intervalle [alpha *epoch_start, alpha * epoch_end]
+    global_time = max(int(mu_max*epoch_start), global_time); //the last flow time of last execution Interval and the current decision start epoch*mu_max 
+  
+    // cerr << "4. Execution dans [" << global_time << " , "<< int(alpha *mu_max*epoch_end) << " ] " << " selected flows size: " << selected.size() << endl;
+
+    if (!selected.empty())
+      allocation_Anticipate(epoch_start,alpha, mu_max, selected, flow_list,global_time);
+    
+    // 5. Avancer le epoch
+    p +=1;
+    epoch_start = epoch_end;
+    epoch_end = pow(2 ,(p-1));
+    // cerr <<"___________________________________________"<<endl;
+   
+  }
+
+  // Do i need to update the global_time
+  // cerr <<"________________END___________________________"<<endl;
 }
 
 

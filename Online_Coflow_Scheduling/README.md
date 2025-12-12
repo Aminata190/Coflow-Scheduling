@@ -24,7 +24,7 @@ This will compile and place `exec_grb` and `exec_clp` into the `./BIN/` director
 
 Basic execution example for the CLP-based simulator:
 ```
-    ./BIN/exec_clp -o -c x1 -a x2 -b x3 inputDirName outputDirName
+    ./BIN/exec_clp -o -u -c x1 -a x2 -b x3 inputDirName outputDirName
 ```
 
 
@@ -33,6 +33,7 @@ Where:
 | Argument |Description                                                                 |
 |:--------:|-----------------------------------------------------------------------------|
 | `-o`     | Run the simulation in online mode.                                         |
+| `-u`     | Run the online mode simulation with anticipate intervalle                  |
 | `x1`     | Scheduling policy: `-o` (optimal), `-c` (clairvoyant Sincronia), `-n` (prediction), `-r` (round robin). |
 | `x2`     | Index of the first instance (file) to be processed.                        |
 | `x3`     | Index of the last instance (file) to be processed.                         |

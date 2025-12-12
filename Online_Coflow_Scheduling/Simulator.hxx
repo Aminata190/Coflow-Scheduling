@@ -129,6 +129,8 @@ public :
   void     online_simulation(Algorithm alg, bool online_priorities, double slot_size, bool type );
 
   void     online_simulation_greedy(Algorithm alg, double slot_size, bool type );
+
+  void     online_simulation_greedy_anticipate(Algorithm alg, double slot_size, bool type );
   // methodes pour la simulation offline
   //  void     greedy_allocation(list<int> & runningFlows, map<int,double> & rates, bool *busy);
 
@@ -140,6 +142,9 @@ public :
   void     offline_simulation(Network::Algorithm algo);
 
   void     allocation(int start_epoch,int alpha,double mu_max,list<int> & selected,list<int> & flow_list);
+
+  void     allocation_Anticipate(int start_epoch,int alpha,double mu_max,list<int> & selected,list<int> & flow_list, int & global_time);
+
 };
 
 

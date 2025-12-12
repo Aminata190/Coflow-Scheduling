@@ -334,9 +334,9 @@ public :
   
   //  void set_flows_pred(double mean_flow_size, double stdev_flow_size);
 
-  void set_flows_pred_true(double delta);  // Pour generer des predictions a partir de l'error delta suivant une loi normale
+  void set_flows_pred_true(double delta, int s);  // Pour generer des predictions a partir de l'error delta suivant une loi normale
 
-  void set_flows_pred_geo(double p);
+  // void set_flows_pred_geo(double p);
   
   void roundRobin(double & cost);
   
