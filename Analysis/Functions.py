@@ -111,6 +111,16 @@ def concatenation_pred_files(folder_path, output_file, prefix="results"):
             with open(path, "r", encoding="utf-8") as inp:
                 out.write(inp.read())
 
+def data_concatenation():
+    folder_path = "/tmp/pfcalcul/Code_online_update/Outputs/paper/0.45/N100_L40/Pred"
+
+    output_file = "/home/asangho/Desktop/These/coflow-scheduling/Prediction_Coflow_Scheduling/Code/Plots/Numerical/Online/Data/0.45/N100_L40/Pred/results-0-100_cct_pred_n=1000.txt"
+    concatenation_pred_files(folder_path,output_file, prefix="results")
+
+
+    output_file_SP_update = "/home/asangho/Desktop/These/coflow-scheduling/Prediction_Coflow_Scheduling/Code/Plots/Numerical/Online/Data/0.45/N100_L40/Pred/A_results-0-100_cct_pred_n=1000.txt"
+    concatenation_pred_files(folder_path,output_file=output_file_SP_update, prefix="SpUpdate_results")
+
 
 ############################################################
 #                                                          #
@@ -239,7 +249,7 @@ def plot_all(delta, meanVal, minVal, maxVal,list_configuration,nRow=None, nCol=N
     plt.rcParams.update({'font.size': 15})
     
     nb_plots = len(meanVal)
-    print(nb_plots)
+    # print(nb_plots)
 
     # Déduction automatique du nombre de lignes/colonnes
     if nb_plots == 1:
@@ -295,6 +305,105 @@ def line_plot_all(list_filename, list_filename_compare,list_configuration,row = 
     # print(len(list_minVal))
     plot_all(delta, meanVal=list_meanVal, minVal=list_minVal, maxVal=list_maxVal, numero_inst=numero_inst,ytitle=ytitle,y_bottom=y_bottom,list_configuration=list_configuration,output_file=output_file)
 
+
+def extract_pred_ratio(list_filename_pred, list_filename_cl,
+                       list_configuration, row=1, numero_inst=0, all=0):
+    list_minVal, list_meanVal, list_maxVal = [], [], []
+
+    for i in range(len(list_configuration)):
+        cl_data = extract_data(filename=list_filename_cl[i], row=row)
+        delta, meanVal, minVal, maxVal = extract_data_pred(
+            list_filename_pred[i],
+            cl_data,
+            numero_inst=numero_inst,
+            all=all
+        )
+        list_minVal.append(minVal)
+        list_meanVal.append(meanVal)
+        list_maxVal.append(maxVal)
+
+    return delta, list_minVal, list_meanVal, list_maxVal
+
+def plot_sp_vs_asp(delta,
+                   sp_min, sp_mean, sp_max,
+                   asp_min, asp_mean, asp_max,
+                   list_configuration,
+                   y_bottom=1.0,
+                   ytitle=r'$\frac{C_{\mathrm{Pred}}}{C_{\mathrm{CL}}}$',
+                   output_file=None):
+
+    plt.rcParams['text.usetex'] = True
+    plt.rcParams.update({'font.size': 14})
+
+    nb_plots = len(list_configuration)
+
+    nRow = nb_plots // 2 + nb_plots % 2
+    nCol = 2 if nb_plots > 1 else 1
+
+    fig, axes = plt.subplots(nRow, nCol, figsize=(8, 4*nRow))
+    axes = axes.flatten() if nb_plots > 1 else [axes]
+
+    for i in range(nb_plots):
+        ax = axes[i]
+
+        # ===== SP classique (ROUGE) =====
+        ax.fill_between(delta, sp_min[i], sp_max[i],
+                        color='red', alpha=0.15)
+        ax.plot(delta, sp_mean[i], color='red',
+                label='SP (mean)', linewidth=2)
+
+        # ===== Anticipate-SP (VERT) =====
+        ax.fill_between(delta, asp_min[i], asp_max[i],
+                        color='blue', alpha=0.15)
+        ax.plot(delta, asp_mean[i], color='blue',
+                linestyle='--', label='Anticipate-SP (mean)', linewidth=2)
+
+        ax.set_title(list_configuration[i])
+        ax.set_xlabel(r'$\delta$')
+        ax.set_ylim(y_bottom, None)
+        ax.legend(fontsize=10)
+
+    for j in range(nb_plots, len(axes)):
+        fig.delaxes(axes[j])
+
+    # fig.supylabel(ytitle)
+    plt.tight_layout()
+
+    if output_file:
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
+        print(f"Saved plot to {output_file}")
+
+    plt.show()
+
+
+def line_plot_combined(
+    list_filename,
+    list_filename_a,
+    list_filename_compare,
+    list_configuration,
+    row=3,numero_inst= 0,all=0,y_bottom=1.99,output_file=None):
+   # ===== SP =====
+    delta, sp_min, sp_mean, sp_max = extract_pred_ratio(
+        list_filename,
+        list_filename_compare,
+        list_configuration,
+        row,numero_inst,all)
+
+    # ===== Anticipate-SP =====
+    _, asp_min, asp_mean, asp_max = extract_pred_ratio(
+        list_filename_a,
+        list_filename_compare,
+        list_configuration,
+        row,numero_inst,all)
+
+    plot_sp_vs_asp(
+        delta,
+        sp_min, sp_mean, sp_max,
+        asp_min, asp_mean, asp_max,
+        list_configuration,
+        y_bottom,
+        output_file=output_file
+    ) 
 
 ############################################################
 #                                                          #
