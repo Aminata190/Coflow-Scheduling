@@ -51,7 +51,7 @@ Coflow-Scheduling/
 
 ```bibtex
 @misc{coflow2025,
-  title        = {Online Coflow Scheduling with Predictions},
+  title        = {Robust Online Coflow Scheduling from Predictions},
   author       = {Aminata Sangho and Olivier Brun and Balakrishna J. Prabhu},
   year         = {2025},
   howpublished = {\url{https://github.com/Aminata190/Coflow-Scheduling}}
